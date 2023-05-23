@@ -1,0 +1,97 @@
+---
+title: "Game Of Thrones"
+author: "Aaron Banlao"
+date: "10/8/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+<!-- Loading packages -->
+```{r}
+suppressPackageStartupMessages(library("jsonlite"))
+suppressPackageStartupMessages(library("tidyverse"))
+library(jsonlite)
+library(tidyverse)
+library(ggplot2)
+```
+
+<!-- Loading JSON file -->
+```{r}
+url <- fromJSON("https://raw.githubusercontent.com/jeffreylancaster/game-of-thrones/master/data/characters.json")
+```
+
+
+<!-- Converting initial data frame into a dataframe to unlist the first layer -->
+```{r}
+url <- as.data.frame(url)
+```
+
+<!-- Converting data frame into tibble format -->
+```{r}
+url <- as.tibble(url)
+```
+
+
+<!-- Renaming rows -->
+```{r}
+url <- url %>% 
+  rename(c(characterName = characters.characterName, houseName = characters.houseName, royal = characters.royal, parents = characters.parents, siblings = characters.siblings, killedBy = characters.killedBy, nickname = characters.nickname, killed = characters.killed, parentOf = characters.parentOf, marriedEngaged = characters.marriedEngaged))
+```
+
+<!-- Removing unnecessary rows  -->
+```{r}
+characters <- url %>% 
+  dplyr::select(-c("characters.characterLink", "characters.actorName", "characters.actorLink", "characters.characterImageThumb", "characters.characterImageFull", "characters.servedBy", "characters.serves", "characters.kingsguard", "characters.guardedBy", "characters.actors", "characters.guardianOf", "characters.allies", "characters.abductedBy", "characters.abducted", "characters.sibling"))
+```
+
+
+```{r}
+characters %>% 
+  head(n=5)
+```
+
+
+
+#Filtering the dataset to only characters who have killed at least one other character
+```{r}
+hasKilled <- characters %>% 
+  drop_na(killed)
+```
+
+```{r}
+head(hasKilled)
+```
+
+
+There are 80 characters who have killed at least 1 person.
+```{r}
+nrow(hasKilled)
+```
+
+
+The most prolific killers are Daenerys Targaryen & Sandor Clegane both with 16, followed by Arya Stark & Jon Snow with 14 kills, Gregor Clegane with 9 kills, etc. 
+```{r}
+characters <- hasKilled %>%
+  unnest(killed) %>%
+  dplyr::select(characterName, killed) %>%
+  group_by(characterName) %>%
+  summarize(numkills = n(), killed = paste(killed, collapse = ", ")) %>%
+  arrange(desc(numkills))
+
+print(characters)
+```
+
+```{r}
+characters %>% 
+  head(10) %>% 
+  ggplot(aes(x = numkills, y = reorder(characterName, numkills), fill = characterName)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Top 10 Prolific Killers of Game of Thrones", x = "Character", y = "Number of Kills") +
+  scale_x_continuous(breaks = seq(0, max(characters$numkills), by = 2)) +
+  guides(fill = F)
+  
+```
+
+
+
